@@ -52,8 +52,24 @@ def policy_sequence_logprob(params, token_ids, mask):
     gathered = gather_token_logprobs(log_probs, token_ids)
     return masked_sequence_logprob(gathered, mask)
 
-# Step 8 - sequence_logprob_grad (not yet solved)
-# TODO: implement
+# Step 8 - sequence_logprob_grad
+def sequence_logprob_grad(params, token_ids, mask):
+    # TODO: Compute gradients of the summed sequence log-probability w.r.t. params
+    token_logits = policy_token_logits(params, token_ids)
+    B, T = token_ids.shape
+    d_logits = -softmax(token_logits,axis=-1)
+    d_logits[np.arange(B)[:,None], np.arange(T)[None,:], token_ids] += 1
+    d_logits *= mask[:, :, None]
+
+    h = params['embed'][token_ids]
+    d_h = d_logits @ params['W_out'].T
+    embed = np.zeros_like(params['embed'])
+    np.add.at(embed,token_ids, d_h)
+    return {
+        'embed':embed,
+        'W_out':np.einsum('btd,btv->dv',h,d_logits),
+        'b_out': np.sum(d_logits, axis=(0,1))
+    }
 
 # Step 9 - bradley_terry_loss (not yet solved)
 # TODO: implement
